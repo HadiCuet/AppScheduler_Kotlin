@@ -6,7 +6,7 @@ import android.content.pm.PackageManager
 data class AppInfo(
     val packageName: String,
     val appName: String,
-    val icon: android.graphics.drawable.Drawable
+    val icon: android.graphics.drawable.Drawable?
 )
 
 class AppListProvider(private val packageManager: PackageManager) {
