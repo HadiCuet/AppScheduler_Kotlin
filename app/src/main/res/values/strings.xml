@@ -26,4 +26,10 @@
     <string name="label_conflict">A schedule already exists at the same time. Pick a different time.</string>
     <string name="label_past_time">Time must be in the future.</string>
     <string name="label_pick_app">Pick an app to schedule</string>
+
+    <!-- Added strings -->
+    <string name="title_create_schedule">Create Schedule</string>
+    <string name="title_edit_schedule">Edit Schedule</string>
+    <string name="error_time_must_be_future">Time must be in the future.</string>
+    <string name="error_schedule_conflict">A schedule already exists at this time. Please pick a different time.</string>
 </resources>

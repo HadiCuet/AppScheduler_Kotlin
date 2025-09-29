@@ -1,20 +1,20 @@
-
 @file:OptIn(ExperimentalMaterial3Api::class) // File-level OptIn to cover all M3 experimental APIs
 
 package com.example.appscheduler_kotlin.ui.screens
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
+import android.os.Build // <-- Import Build
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.* // General Material 3 import
-import androidx.compose.material3.ExperimentalMaterial3Api // Specific import for the annotation
+import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext // Specific import for LocalContext
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -23,6 +23,7 @@ import com.example.appscheduler_kotlin.R
 import com.example.appscheduler_kotlin.data.AppDatabase
 import com.example.appscheduler_kotlin.repo.SchedulesRepository
 import com.example.appscheduler_kotlin.repo.SchedulesRepository as RepoFactory
+import com.example.appscheduler_kotlin.ui.PermissionHelpers // <-- Import PermissionHelpers
 import com.example.appscheduler_kotlin.util.Formatters
 import com.example.appscheduler_kotlin.util.InstalledApp
 import com.example.appscheduler_kotlin.util.InstalledApps
@@ -31,14 +32,13 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
-// The file-level @OptIn should cover this, but adding it here is harmless.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditScheduleScreen(
     scheduleId: Long?,
     onDone: () -> Unit
 ) {
-    val context = LocalContext.current // Use imported LocalContext
+    val context = LocalContext.current
     val repo = remember { RepoFactory(context) }
     val vm = remember { EditScheduleViewModel(repo, AppDatabase.get(context).scheduleDao()) }
 
@@ -47,11 +47,11 @@ fun EditScheduleScreen(
     }
 
     val state by vm.state.collectAsState()
-    val snack = remember { SnackbarHostState() } // SnackbarHostState is also M3
+    val snack = remember { SnackbarHostState() }
 
-    Scaffold( // Scaffold is M3
-        topBar = { TopAppBar(title = { Text(if (scheduleId == null) "Create Schedule" else "Edit Schedule") }) }, // TopAppBar is M3
-        snackbarHost = { SnackbarHost(snack) } // SnackbarHost is M3 (Line 47)
+    Scaffold(
+        topBar = { TopAppBar(title = { Text(if (scheduleId == null) stringResource(R.string.title_create_schedule) else stringResource(R.string.title_edit_schedule)) }) },
+        snackbarHost = { SnackbarHost(snack) }
     ) { padding ->
         Column(
             Modifier
@@ -76,10 +76,19 @@ fun EditScheduleScreen(
 
             Button(
                 onClick = {
-                    vm.saveOrUpdate(
-                        onSuccess = onDone,
-                        onError = { msg -> vm.errorMessage = msg }
-                    )
+                    // --- Permission Check ---
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                        !PermissionHelpers.canScheduleExactAlarms(context)) {
+                        // Using existing string, you might want a more specific one later
+                        vm.errorMessage = context.getString(R.string.permission_exact_alarm_needed)
+                    } else {
+                        // Proceed to save if permission is granted or not needed
+                        vm.saveOrUpdate(
+                            onSuccess = onDone,
+                            onError = { msg -> vm.errorMessage = msg }
+                        )
+                    }
+                    // --- End Permission Check ---
                 },
                 enabled = state.canSave
             ) {
@@ -260,7 +269,7 @@ class EditScheduleViewModel(
                 return@launch
             }
             if (whenMs <= System.currentTimeMillis()) {
-                onError(contextString("Time must be in the future.")) // Replace contextString with proper resource loading
+                onError(contextString(R.string.error_time_must_be_future)) // Replace contextString with proper resource loading
                 return@launch
             }
             val result = if (st.id == null) {
@@ -272,7 +281,7 @@ class EditScheduleViewModel(
                 onSuccess = { onSuccess() },
                 onFailure = {
                     val message = if (it.message?.contains("UNIQUE", true) == true) {
-                        contextString("A schedule already exists at the same time. Pick a different time.") // Replace contextString
+                        contextString(R.string.error_schedule_conflict) // Replace contextString
                     } else it.message ?: "Failed: ${it::class.java.simpleName}"
                     onError(message)
                 }
@@ -280,7 +289,20 @@ class EditScheduleViewModel(
         }
     }
 
-    private fun contextString(s: String) = s // Placeholder
+    // Helper to get string resource from ViewModel (should ideally be passed from Composable or use an Application context)
+    private fun contextString(resId: Int): String {
+        // This is a simplification. In a real app, you'd inject Application context
+        // or pass strings from the Composable.
+        // For now, this placeholder won't actually work without a context.
+        // For the purpose of this example, we'll return a hardcoded string
+        // but ideally, you'd pass the context to the ViewModel or handle string resources in the UI layer.
+        return when (resId) {
+            R.string.error_time_must_be_future -> "Time must be in the future."
+            R.string.error_schedule_conflict -> "A schedule already exists at the same time. Pick a different time."
+            else -> "Unknown error"
+        }
+    }
+     private fun contextString(s: String) = s // Placeholder
 }
 
 private fun currentCal(): Calendar = Calendar.getInstance()
