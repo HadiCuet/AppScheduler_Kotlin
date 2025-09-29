@@ -58,7 +58,9 @@ dependencies {
 
     // Compose
     implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.material3)
+    // implementation(libs.androidx.compose.material3)
+    implementation("androidx.compose.material3:material3:LATEST_VERSION") // Replace LATEST_VERSION
+
     implementation(libs.androidx.compose.ui.tooling.preview)
     debugImplementation(libs.androidx.compose.ui.tooling)
     implementation(libs.androidx.activity.compose)
@@ -69,7 +71,9 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
-
+    dependencies {
+        implementation("com.google.android.material:material:1.12.0") // Or the latest version
+    }
     // AndroidX Core
     implementation(libs.androidx.core.ktx)
     

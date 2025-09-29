@@ -1,3 +1,6 @@
+
+@file:OptIn(ExperimentalMaterial3Api::class) // File-level OptIn to cover all M3 experimental APIs
+
 package com.example.appscheduler_kotlin.ui.screens
 
 import android.app.DatePickerDialog
@@ -6,10 +9,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.*
+import androidx.compose.material3.* // General Material 3 import
+import androidx.compose.material3.ExperimentalMaterial3Api // Specific import for the annotation
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext // Specific import for LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
@@ -26,12 +31,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
+// The file-level @OptIn should cover this, but adding it here is harmless.
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditScheduleScreen(
     scheduleId: Long?,
     onDone: () -> Unit
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current // Use imported LocalContext
     val repo = remember { RepoFactory(context) }
     val vm = remember { EditScheduleViewModel(repo, AppDatabase.get(context).scheduleDao()) }
 
@@ -40,14 +47,19 @@ fun EditScheduleScreen(
     }
 
     val state by vm.state.collectAsState()
+    val snack = remember { SnackbarHostState() } // SnackbarHostState is also M3
 
-    val snack = remember { SnackbarHostState() }
-
-    Scaffold(
-        topBar = { TopAppBar(title = { Text(if (scheduleId == null) "Create Schedule" else "Edit Schedule") }) },
-        snackbarHost = { SnackbarHost(snack) }
+    Scaffold( // Scaffold is M3
+        topBar = { TopAppBar(title = { Text(if (scheduleId == null) "Create Schedule" else "Edit Schedule") }) }, // TopAppBar is M3
+        snackbarHost = { SnackbarHost(snack) } // SnackbarHost is M3 (Line 47)
     ) { padding ->
-        Column(Modifier.padding(padding).fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(
+            Modifier
+                .padding(padding)
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
 
             AppPickerRow(
                 selected = state.selectedAppLabel ?: stringResource(R.string.label_pick_app),
@@ -116,12 +128,12 @@ private fun DateTimeRow(millis: Long?, onPickDate: () -> Unit, onPickTime: () ->
 
 @Composable
 private fun AppPickerDialog(onDismiss: () -> Unit, onSelected: (String, String) -> Unit) {
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current // Use imported LocalContext
     val apps = remember { mutableStateOf<List<InstalledApp>>(emptyList()) }
     LaunchedEffect(Unit) {
         apps.value = InstalledApps.loadLaunchable(context)
     }
-    AlertDialog(
+    AlertDialog( // AlertDialog is M3
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.label_select_app)) },
         text = {
@@ -183,7 +195,7 @@ class EditScheduleViewModel(
                 else EditState(
                     id = s.id,
                     packageName = s.packageName,
-                    selectedAppLabel = s.packageName,
+                    selectedAppLabel = s.packageName, // Consider fetching actual app label if needed
                     triggerAtMillis = s.triggerAtMillis
                 )
             }
@@ -248,7 +260,7 @@ class EditScheduleViewModel(
                 return@launch
             }
             if (whenMs <= System.currentTimeMillis()) {
-                onError(contextString("Time must be in the future."))
+                onError(contextString("Time must be in the future.")) // Replace contextString with proper resource loading
                 return@launch
             }
             val result = if (st.id == null) {
@@ -260,7 +272,7 @@ class EditScheduleViewModel(
                 onSuccess = { onSuccess() },
                 onFailure = {
                     val message = if (it.message?.contains("UNIQUE", true) == true) {
-                        contextString("A schedule already exists at the same time. Pick a different time.")
+                        contextString("A schedule already exists at the same time. Pick a different time.") // Replace contextString
                     } else it.message ?: "Failed: ${it::class.java.simpleName}"
                     onError(message)
                 }
@@ -268,7 +280,7 @@ class EditScheduleViewModel(
         }
     }
 
-    private fun contextString(s: String) = s
+    private fun contextString(s: String) = s // Placeholder
 }
 
 private fun currentCal(): Calendar = Calendar.getInstance()

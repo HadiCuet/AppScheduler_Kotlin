@@ -1,3 +1,6 @@
+
+@file:OptIn(ExperimentalMaterial3Api::class) // File-level OptIn
+
 package com.example.appscheduler_kotlin.ui.screens
 
 import android.os.Build
@@ -5,9 +8,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api // Explicit import for the annotation
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext // Specific import for LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -25,12 +30,13 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class) // Function-level OptIn (redundant but safe)
 @Composable
 fun ScheduleListScreen(
     onCreateNew: () -> Unit,
     onEdit: (Long) -> Unit
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current // Use imported LocalContext
     val vm = remember { ScheduleListViewModel(RepoFactory(context)) }
 
     val schedules by vm.schedules.collectAsState()
@@ -38,7 +44,7 @@ fun ScheduleListScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text(stringResource(R.string.label_schedules)) })
+            TopAppBar(title = { Text(stringResource(R.string.label_schedules)) }) // Line 41
         },
         snackbarHost = { SnackbarHost(snack) },
         floatingActionButton = {
@@ -71,10 +77,10 @@ fun ScheduleListScreen(
 
 @Composable
 private fun PermissionWarnings() {
-    val context = androidx.compose.ui.platform.LocalContext.current
+    val context = LocalContext.current // Use imported LocalContext
     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !PermissionHelpers.canScheduleExactAlarms(context)) {
-            AssistChip(
+            AssistChip( // AssistChip is also M3, covered by file-level OptIn
                 onClick = { PermissionHelpers.openExactAlarmSettings(context) },
                 label = { Text(stringResource(R.string.permission_exact_alarm_needed)) }
             )
@@ -88,7 +94,7 @@ private fun ScheduleRow(
     onEdit: () -> Unit,
     onCancel: () -> Unit
 ) {
-    Card(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
+    Card(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) { // Card is M3
         Column(Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -105,8 +111,8 @@ private fun ScheduleRow(
             }
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = onEdit) { Text(stringResource(R.string.action_edit)) }
-                OutlinedButton(onClick = onCancel) { Text(stringResource(R.string.action_cancel)) }
+                OutlinedButton(onClick = onEdit) { Text(stringResource(R.string.action_edit)) } // OutlinedButton is M3
+                OutlinedButton(onClick = onCancel) { Text(stringResource(R.string.action_cancel)) } // OutlinedButton is M3
             }
         }
     }
@@ -121,7 +127,7 @@ private fun StatusChip(status: ScheduleStatus) {
         ScheduleStatus.CANCELLED -> MaterialTheme.colorScheme.error
         ScheduleStatus.MISSED -> MaterialTheme.colorScheme.error
     }
-    AssistChip(
+    AssistChip( // AssistChip is M3
         onClick = { },
         label = { Text("${stringResource(R.string.label_status)}: $status") },
         colors = AssistChipDefaults.assistChipColors(containerColor = color.copy(alpha = 0.2f))
