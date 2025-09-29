@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">App Scheduler</string>
+    
+    <!-- Navigation -->
+    <string name="nav_schedules">Schedules</string>
+    <string name="nav_logs">Logs</string>
+    <string name="nav_settings">Settings</string>
+    
+    <!-- Schedule List -->
+    <string name="no_schedules">No schedules yet</string>
+    <string name="no_schedules_subtitle">Tap the + button to create your first schedule</string>
+    <string name="schedule_for">Schedule for %1$s</string>
+    <string name="schedule_at">at %1$s</string>
+    
+    <!-- Create/Edit Schedule -->
+    <string name="create_schedule">Create Schedule</string>
+    <string name="edit_schedule">Edit Schedule</string>
+    <string name="select_app">Select App</string>
+    <string name="select_date">Select Date</string>
+    <string name="select_time">Select Time</string>
+    <string name="save_schedule">Save Schedule</string>
+    <string name="update_schedule">Update Schedule</string>
+    <string name="cancel">Cancel</string>
+    <string name="delete">Delete</string>
+    
+    <!-- Status -->
+    <string name="status_scheduled">Scheduled</string>
+    <string name="status_fired">Fired</string>
+    <string name="status_launch_intent_sent">Launch Intent Sent</string>
+    <string name="status_launched_confirmed">Launch Confirmed</string>
+    <string name="status_cancelled">Cancelled</string>
+    <string name="status_missed">Missed</string>
+    
+    <!-- Actions -->
+    <string name="edit">Edit</string>
+    <string name="cancel_schedule">Cancel</string>
+    <string name="verify">Verify</string>
+    
+    <!-- Validation -->
+    <string name="error_select_app">Please select an app</string>
+    <string name="error_select_future_time">Please select a future date and time</string>
+    <string name="error_time_conflict">A schedule already exists at this exact time</string>
+    <string name="error_exact_alarm_permission">Exact alarm permission is required to schedule apps</string>
+    
+    <!-- Permissions -->
+    <string name="permission_notification_title">Notification Permission</string>
+    <string name="permission_notification_message">This app needs notification permission to alert you when it\'s time to launch your scheduled apps.</string>
+    <string name="permission_exact_alarm_title">Exact Alarm Permission</string>
+    <string name="permission_exact_alarm_message">This app needs permission to schedule exact alarms to launch your apps at precise times.</string>
+    <string name="permission_usage_stats_title">Usage Access Permission</string>
+    <string name="permission_usage_stats_message">This optional permission allows the app to verify if scheduled apps were successfully launched.</string>
+    <string name="grant_permission">Grant Permission</string>
+    <string name="skip">Skip</string>
+    <string name="settings">Settings</string>
+    
+    <!-- Logs -->
+    <string name="execution_logs">Execution Logs</string>
+    <string name="no_logs">No execution logs yet</string>
+    <string name="filter_all">All</string>
+    <string name="filter_success">Success</string>
+    <string name="filter_failed">Failed</string>
+    
+    <!-- App Info -->
+    <string name="app_not_found">App not found or uninstalled</string>
+    <string name="time_until">in %1$s</string>
+    
+    <!-- Notifications -->
+    <string name="notification_title">Time to open %1$s</string>
+    <string name="notification_text">Tap to launch the app</string>
+    <string name="launch_app">Launch App</string>
+</resources>
