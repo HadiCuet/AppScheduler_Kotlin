@@ -9,6 +9,7 @@ import com.example.appscheduler_kotlin.R
 import com.example.appscheduler_kotlin.data.AppDatabase
 import com.example.appscheduler_kotlin.data.Schedule
 import com.example.appscheduler_kotlin.data.ScheduleStatus
+import com.example.appscheduler_kotlin.domain.AppScheduler // Import AppScheduler for its constants
 import com.example.appscheduler_kotlin.util.Notifications
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -16,17 +17,36 @@ import kotlinx.coroutines.launch
 
 class AlarmReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        val scheduleId = intent.getLongExtra("schedule_id", -1L)
-        if (scheduleId == -1L) return
+        // Use the constant from AppScheduler for the extra key
+        val scheduleId = intent.getLongExtra(AppScheduler.EXTRA_SCHEDULE_ID, -1L)
+        if (scheduleId == -1L) {
+            println("AlarmReceiver: Received invalid scheduleId, aborting.") // Added log
+            return
+        }
+        println("AlarmReceiver: Received scheduleId: $scheduleId") // Added log
 
         val pending = goAsync()
         CoroutineScope(Dispatchers.IO).launch {
             val db = AppDatabase.get(context)
-            val s = db.scheduleDao().get(scheduleId) ?: run { pending.finish(); return@launch }
+            val s = db.scheduleDao().get(scheduleId)
+            if (s == null) {
+                println("AlarmReceiver: Schedule not found in DB for id: $scheduleId") // Added log
+                pending.finish()
+                return@launch
+            }
+
+            // Optional: Check if the schedule should still fire (e.g., status is SCHEDULED)
+            if (s.status != ScheduleStatus.SCHEDULED) {
+                println("AlarmReceiver: Schedule $scheduleId status is ${s.status}, not firing notification.") // Added log
+                pending.finish()
+                return@launch
+            }
+
             db.scheduleDao().update(
                 s.copy(status = ScheduleStatus.FIRED, updatedAt = System.currentTimeMillis())
             )
             showNotification(context, s)
+            println("AlarmReceiver: Notification processed for scheduleId: $scheduleId") // Added log
             pending.finish()
         }
     }
@@ -52,6 +72,7 @@ class AlarmReceiver : BroadcastReceiver() {
             .build()
 
         NotificationManagerCompat.from(context).notify(sched.requestCode, notification)
+        println("AlarmReceiver: Notification shown for $appLabel (ID: ${sched.id})") // Added log
     }
 }
 
