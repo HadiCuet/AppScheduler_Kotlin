@@ -4,26 +4,27 @@ package com.example.appscheduler_kotlin.ui.screens
 
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
-import android.os.Build // <-- Import Build
+import android.os.Build
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback // Added import
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType // Added import
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.appscheduler_kotlin.R
 import com.example.appscheduler_kotlin.data.AppDatabase
+import com.example.appscheduler_kotlin.data.ScheduleDao
 import com.example.appscheduler_kotlin.repo.SchedulesRepository
-import com.example.appscheduler_kotlin.repo.SchedulesRepository as RepoFactory
-import com.example.appscheduler_kotlin.ui.PermissionHelpers // <-- Import PermissionHelpers
+import com.example.appscheduler_kotlin.ui.PermissionHelpers
 import com.example.appscheduler_kotlin.util.Formatters
 import com.example.appscheduler_kotlin.util.InstalledApp
 import com.example.appscheduler_kotlin.util.InstalledApps
@@ -39,7 +40,7 @@ fun EditScheduleScreen(
     onDone: () -> Unit
 ) {
     val context = LocalContext.current
-    val repo = remember { RepoFactory(context) }
+    val repo = remember { SchedulesRepository(context) } // Corrected instantiation if it's a direct class
     val vm = remember { EditScheduleViewModel(repo, AppDatabase.get(context).scheduleDao()) }
 
     LaunchedEffect(scheduleId) {
@@ -48,19 +49,55 @@ fun EditScheduleScreen(
 
     val state by vm.state.collectAsState()
     val snack = remember { SnackbarHostState() }
+    val hapticFeedback = LocalHapticFeedback.current // Added for haptics
 
     Scaffold(
         topBar = { TopAppBar(title = { Text(if (scheduleId == null) stringResource(R.string.title_create_schedule) else stringResource(R.string.title_edit_schedule)) }) },
-        snackbarHost = { SnackbarHost(snack) }
+        snackbarHost = { SnackbarHost(snack) },
+        bottomBar = {
+            BottomAppBar {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    OutlinedButton(
+                        onClick = onDone, // Cancel action
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(stringResource(R.string.action_cancel))
+                    }
+                    Button(
+                        onClick = {
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) // Corrected haptic type
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                                !PermissionHelpers.canScheduleExactAlarms(context)) {
+                                vm.errorMessage = context.getString(R.string.permission_exact_alarm_needed)
+                            } else {
+                                vm.saveOrUpdate(
+                                    onSuccess = onDone,
+                                    onError = { msg -> vm.errorMessage = msg }
+                                )
+                            }
+                        },
+                        enabled = state.canSave,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(stringResource(R.string.action_save))
+                    }
+                }
+            }
+        }
     ) { padding ->
         Column(
             Modifier
-                .padding(padding)
+                .padding(padding) // Scaffold's padding for system bars and bottomBar
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(16.dp), // Screen content padding
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-
             AppPickerRow(
                 selected = state.selectedAppLabel ?: stringResource(R.string.label_pick_app),
                 onPick = { vm.pickAppDialog = true }
@@ -72,31 +109,8 @@ fun EditScheduleScreen(
                 onPickTime = { vm.pickTime(context) }
             )
 
-            Spacer(Modifier.height(12.dp))
-
-            Button(
-                onClick = {
-                    // --- Permission Check ---
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                        !PermissionHelpers.canScheduleExactAlarms(context)) {
-                        // Using existing string, you might want a more specific one later
-                        vm.errorMessage = context.getString(R.string.permission_exact_alarm_needed)
-                    } else {
-                        // Proceed to save if permission is granted or not needed
-                        vm.saveOrUpdate(
-                            onSuccess = onDone,
-                            onError = { msg -> vm.errorMessage = msg }
-                        )
-                    }
-                    // --- End Permission Check ---
-                },
-                enabled = state.canSave
-            ) {
-                Text(stringResource(R.string.action_save))
-            }
-
             state.errorMessage?.let {
-                Text(text = it, color = MaterialTheme.colorScheme.error)
+                Text(text = it, color = MaterialTheme.colorScheme.error, modifier = Modifier.fillMaxWidth())
             }
         }
 
@@ -137,12 +151,12 @@ private fun DateTimeRow(millis: Long?, onPickDate: () -> Unit, onPickTime: () ->
 
 @Composable
 private fun AppPickerDialog(onDismiss: () -> Unit, onSelected: (String, String) -> Unit) {
-    val context = LocalContext.current // Use imported LocalContext
+    val context = LocalContext.current
     val apps = remember { mutableStateOf<List<InstalledApp>>(emptyList()) }
     LaunchedEffect(Unit) {
         apps.value = InstalledApps.loadLaunchable(context)
     }
-    AlertDialog( // AlertDialog is M3
+    AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.label_select_app)) },
         text = {
@@ -183,7 +197,7 @@ data class EditState(
 
 class EditScheduleViewModel(
     private val repo: SchedulesRepository,
-    private val dao: com.example.appscheduler_kotlin.data.ScheduleDao
+    private val dao: ScheduleDao // Keep original type
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(EditState())
@@ -269,7 +283,7 @@ class EditScheduleViewModel(
                 return@launch
             }
             if (whenMs <= System.currentTimeMillis()) {
-                onError(contextString(R.string.error_time_must_be_future)) // Replace contextString with proper resource loading
+                onError(contextString(R.string.error_time_must_be_future))
                 return@launch
             }
             val result = if (st.id == null) {
@@ -281,7 +295,7 @@ class EditScheduleViewModel(
                 onSuccess = { onSuccess() },
                 onFailure = {
                     val message = if (it.message?.contains("UNIQUE", true) == true) {
-                        contextString(R.string.error_schedule_conflict) // Replace contextString
+                        contextString(R.string.error_schedule_conflict)
                     } else it.message ?: "Failed: ${it::class.java.simpleName}"
                     onError(message)
                 }
@@ -289,13 +303,7 @@ class EditScheduleViewModel(
         }
     }
 
-    // Helper to get string resource from ViewModel (should ideally be passed from Composable or use an Application context)
     private fun contextString(resId: Int): String {
-        // This is a simplification. In a real app, you'd inject Application context
-        // or pass strings from the Composable.
-        // For now, this placeholder won't actually work without a context.
-        // For the purpose of this example, we'll return a hardcoded string
-        // but ideally, you'd pass the context to the ViewModel or handle string resources in the UI layer.
         return when (resId) {
             R.string.error_time_must_be_future -> "Time must be in the future."
             R.string.error_schedule_conflict -> "A schedule already exists at the same time. Pick a different time."
