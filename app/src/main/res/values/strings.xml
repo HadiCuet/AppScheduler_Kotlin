@@ -27,6 +27,14 @@
     <string name="label_past_time">Time must be in the future.</string>
     <string name="label_pick_app">Pick an app to schedule</string>
 
+    <string name="label_date_selection_title">Date</string>
+    <string name="label_time_selection_title">Time</string>
+    <string name="label_select_date">Select Date</string>
+    <string name="label_select_time">Select Time</string>
+    <string name="desc_tappable_select_date">Select the date</string>
+    <string name="desc_tappable_select_time">Select the time</string>
+
+
     <!-- Added strings -->
     <string name="title_create_schedule">Create Schedule</string>
     <string name="title_edit_schedule">Edit Schedule</string>

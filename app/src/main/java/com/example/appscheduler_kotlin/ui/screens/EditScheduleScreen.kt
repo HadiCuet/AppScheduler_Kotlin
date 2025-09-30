@@ -9,8 +9,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons // Added import
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight // Added import
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,7 +19,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow // Added import
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -98,7 +98,7 @@ fun EditScheduleScreen(
                 .padding(padding)
                 .fillMaxSize()
                 .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp) // Increased spacing a bit for the new card
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             AppPickerRow(
                 selected = state.selectedAppLabel ?: stringResource(R.string.label_pick_app),
@@ -140,7 +140,7 @@ private fun AppPickerRow(selected: String, onPick: () -> Unit) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp), // Adjusted padding for card content
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
@@ -163,17 +163,77 @@ private fun AppPickerRow(selected: String, onPick: () -> Unit) {
 
 @Composable
 private fun DateTimeRow(millis: Long?, onPickDate: () -> Unit, onPickTime: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-            Text("${stringResource(R.string.label_date)}: ${millis?.let { Formatters.formatDateTime(it).substring(0, 10) } ?: "--"}")
-            OutlinedButton(onClick = onPickDate) { Text(stringResource(R.string.action_change)) }
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) { // Outer spacing for Date and Time sections
+        // Date Picker Card
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = stringResource(R.string.label_date_selection_title),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            OutlinedCard(
+                onClick = onPickDate,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = millis?.let { Formatters.formatDateTime(it).substring(0, 10) } ?: stringResource(R.string.label_select_date),
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = stringResource(R.string.desc_tappable_select_date),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
-        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-            Text("${stringResource(R.string.label_time)}: ${millis?.let { Formatters.formatDateTime(it).substring(11) } ?: "--"}")
-            OutlinedButton(onClick = onPickTime) { Text(stringResource(R.string.action_change)) }
+
+        // Time Picker Card
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = stringResource(R.string.label_time_selection_title),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            OutlinedCard(
+                onClick = onPickTime,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = millis?.let { Formatters.formatDateTime(it).substring(11) } ?: stringResource(R.string.label_select_time),
+                        modifier = Modifier.weight(1f),
+                        style = MaterialTheme.typography.bodyLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = stringResource(R.string.desc_tappable_select_time),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
     }
 }
+
 
 @Composable
 private fun AppPickerDialog(onDismiss: () -> Unit, onSelected: (String, String) -> Unit) {
@@ -330,13 +390,27 @@ class EditScheduleViewModel(
     }
 
     private fun contextString(resId: Int): String {
+        // This is a simplified way to get strings in VM, ideally use dependency injection for context or a string provider
         return when (resId) {
             R.string.error_time_must_be_future -> "Time must be in the future."
-            R.string.error_schedule_conflict -> "A schedule already exists at the same time. Pick a different time."
+            R.string.error_schedule_conflict -> "A schedule already exists at this time. Pick a different time."
+            // Add other string resources here as needed
             else -> "Unknown error"
         }
     }
-     private fun contextString(s: String) = s // Placeholder
+     private fun contextString(s: String) = s // Placeholder for direct string errors
 }
 
-private fun currentCal(): Calendar = Calendar.getInstance()
+private fun currentCal(): Calendar = Calendar.getInstance() 
+
+// Assuming Formatters.kt has these functions or similar:
+// object Formatters {
+//     fun formatDate(millis: Long): String {
+//         val sdf = java.text.SimpleDateFormat("MM/dd/yyyy", java.util.Locale.getDefault())
+//         return sdf.format(java.util.Date(millis))
+//     }
+//     fun formatTime(millis: Long): String {
+//         val sdf = java.text.SimpleDateFormat("hh:mm a", java.util.Locale.getDefault())
+//         return sdf.format(java.util.Date(millis))
+//     }
+// }
