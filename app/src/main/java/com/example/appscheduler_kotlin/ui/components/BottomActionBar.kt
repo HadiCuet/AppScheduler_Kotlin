@@ -44,7 +44,7 @@ fun BottomActionBar(
             Spacer(modifier = Modifier.width(12.dp))
             
             // Save Button
-            FilledButton(
+            Button(
                 onClick = onSave,
                 enabled = saveEnabled && !isLoading,
                 modifier = Modifier

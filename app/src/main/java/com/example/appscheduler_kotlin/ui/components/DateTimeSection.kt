@@ -233,7 +233,7 @@ fun DateTimePickers(
                     
                     Spacer(modifier = Modifier.width(8.dp))
                     
-                    FilledButton(
+                    Button(
                         onClick = {
                             datePickerState.selectedDateMillis?.let { selectedDate ->
                                 onDateSelected(selectedDate)
@@ -296,7 +296,7 @@ fun DateTimePickers(
                     
                     Spacer(modifier = Modifier.width(8.dp))
                     
-                    FilledButton(
+                    Button(
                         onClick = {
                             onTimeSelected(timePickerState.hour, timePickerState.minute)
                             onTimePickerDismiss()
