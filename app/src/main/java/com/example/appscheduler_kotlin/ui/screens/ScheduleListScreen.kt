@@ -3,19 +3,25 @@
 
 package com.example.appscheduler_kotlin.ui.screens
 
+import android.content.pm.PackageManager
 import android.os.Build
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
-import androidx.compose.material3.ExperimentalMaterial3Api // Explicit import for the annotation
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext // Specific import for LocalContext
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.appscheduler_kotlin.R
@@ -29,14 +35,15 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.Locale // Added for title case formatting
 
-@OptIn(ExperimentalMaterial3Api::class) // Function-level OptIn (redundant but safe)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScheduleListScreen(
     onCreateNew: () -> Unit,
     onEdit: (Long) -> Unit
 ) {
-    val context = LocalContext.current // Use imported LocalContext
+    val context = LocalContext.current
     val vm = remember { ScheduleListViewModel(RepoFactory(context)) }
 
     val schedules by vm.schedules.collectAsState()
@@ -44,12 +51,15 @@ fun ScheduleListScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text(stringResource(R.string.label_schedules)) }) // Line 41
+            TopAppBar(title = { Text(stringResource(R.string.label_schedules)) })
         },
         snackbarHost = { SnackbarHost(snack) },
         floatingActionButton = {
             FloatingActionButton(onClick = onCreateNew) {
-                Text("+")
+                Icon(
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = stringResource(R.string.action_add)
+                )
             }
         }
     ) { padding ->
@@ -77,10 +87,10 @@ fun ScheduleListScreen(
 
 @Composable
 private fun PermissionWarnings() {
-    val context = LocalContext.current // Use imported LocalContext
+    val context = LocalContext.current
     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !PermissionHelpers.canScheduleExactAlarms(context)) {
-            AssistChip( // AssistChip is also M3, covered by file-level OptIn
+            AssistChip(
                 onClick = { PermissionHelpers.openExactAlarmSettings(context) },
                 label = { Text(stringResource(R.string.permission_exact_alarm_needed)) }
             )
@@ -94,11 +104,36 @@ private fun ScheduleRow(
     onEdit: () -> Unit,
     onCancel: () -> Unit
 ) {
-    Card(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) { // Card is M3
+    val context = LocalContext.current
+    val pm = context.packageManager
+    val iconSize = 40.dp
+    val density = LocalDensity.current
+    val iconSizePx = remember(iconSize, density) { with(density) { iconSize.roundToPx() } }
+
+    val appIconBitmap = remember(schedule.packageName) {
+        try {
+            val drawable = pm.getApplicationIcon(schedule.packageName)
+            drawable.toBitmap(width = iconSizePx, height = iconSizePx).asImageBitmap()
+        } catch (e: PackageManager.NameNotFoundException) {
+            null // Handle app not found or icon loading error
+        }
+    }
+
+    Card(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
         Column(Modifier.padding(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                if (appIconBitmap != null) {
+                    Image(
+                        bitmap = appIconBitmap,
+                        contentDescription = schedule.appLabel + " icon",
+                        modifier = Modifier.size(iconSize)
+                    )
+                } else {
+                    Spacer(Modifier.size(iconSize)) // Placeholder if icon is null
+                }
+                Spacer(Modifier.width(12.dp))
                 Text(
-                    text = schedule.packageName,
+                    text = schedule.appLabel, // Use appLabel here
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f)
@@ -111,8 +146,8 @@ private fun ScheduleRow(
             }
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = onEdit) { Text(stringResource(R.string.action_edit)) } // OutlinedButton is M3
-                OutlinedButton(onClick = onCancel) { Text(stringResource(R.string.action_cancel)) } // OutlinedButton is M3
+                OutlinedButton(onClick = onEdit) { Text(stringResource(R.string.action_edit)) }
+                OutlinedButton(onClick = onCancel) { Text(stringResource(R.string.action_cancel)) }
             }
         }
     }
@@ -127,9 +162,14 @@ private fun StatusChip(status: ScheduleStatus) {
         ScheduleStatus.CANCELLED -> MaterialTheme.colorScheme.error
         ScheduleStatus.MISSED -> MaterialTheme.colorScheme.error
     }
-    AssistChip( // AssistChip is M3
+    AssistChip(
         onClick = { },
-        label = { Text("${stringResource(R.string.label_status)}: $status") },
+        label = { 
+            Text(
+                status.toString().lowercase()
+                    .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+            )
+        },
         colors = AssistChipDefaults.assistChipColors(containerColor = color.copy(alpha = 0.2f))
     )
 }

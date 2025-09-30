@@ -5,9 +5,11 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [Schedule::class], version = 1, exportSchema = false)
-@TypeConverters(Converters::class) // We'll add this later if needed for complex types like Date or Enum persistence
+@Database(entities = [Schedule::class], version = 2, exportSchema = false) // Version incremented
+@TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun scheduleDao(): ScheduleDao
@@ -16,6 +18,13 @@ abstract class AppDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
+        // Migration from 1 to 2: Add appLabel column
+        val MIGRATION_1_2 = object : Migration(1, 2) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE schedules ADD COLUMN appLabel TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
         fun get(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -23,12 +32,9 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "app_scheduler_database"
                 )
-                // Wipes and rebuilds instead of migrating if no Migration object.
-                // Migration is not part of this initial build.
-                .fallbackToDestructiveMigration()
+                .addMigrations(MIGRATION_1_2) // Added migration
                 .build()
                 INSTANCE = instance
-                // return instance
                 instance
             }
         }

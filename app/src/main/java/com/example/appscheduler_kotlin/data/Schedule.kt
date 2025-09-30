@@ -14,6 +14,7 @@ enum class ScheduleStatus { SCHEDULED, FIRED, LAUNCH_INTENT_SENT, CANCELLED, MIS
 )
 data class Schedule(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val appLabel: String, // Added field
     val packageName: String,
     val triggerAtMillis: Long,
     val requestCode: Int,
