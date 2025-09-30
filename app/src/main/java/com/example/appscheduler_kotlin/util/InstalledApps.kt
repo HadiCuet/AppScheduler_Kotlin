@@ -1,7 +1,8 @@
 package com.example.appscheduler_kotlin.util
 
 import android.content.Context
-import android.content.Intent
+import android.content.Intent // Keep for reference, but not directly used in the new logic
+import android.content.pm.PackageManager // Added for PackageManager.GET_META_DATA
 import android.graphics.drawable.Drawable
 import android.util.Log
 
@@ -14,22 +15,35 @@ data class InstalledApp(
 object InstalledApps {
     fun loadLaunchable(context: Context): List<InstalledApp> {
         val pm = context.packageManager
-        val intent = Intent(Intent.ACTION_MAIN).apply {
-            addCategory(Intent.CATEGORY_LAUNCHER)
+        // Get all installed applications
+        val allInstalledAppsInfo = try {
+            pm.getInstalledApplications(PackageManager.GET_META_DATA)
+        } catch (e: Exception) {
+            Log.e("InstalledApps", "Failed to get installed applications", e)
+            return emptyList() // Return empty if we can't get the list
         }
-        val activities = pm.queryIntentActivities(intent, 0)
-        val apps = activities.mapNotNull { ri ->
-            try {
-                val appInfo = ri.activityInfo.applicationInfo
-                val label = pm.getApplicationLabel(appInfo).toString()
-                val icon = pm.getApplicationIcon(appInfo)
-                InstalledApp(appInfo.packageName, label, icon)
-            } catch (e: Exception) {
-                Log.w("InstalledApps", "Failed to read app: ${ri.activityInfo.packageName}", e)
-                null
+
+        val apps = allInstalledAppsInfo.mapNotNull { appInfo ->
+            // Check if the application has a launch intent
+            if (pm.getLaunchIntentForPackage(appInfo.packageName) != null) {
+                try {
+                    val label = pm.getApplicationLabel(appInfo).toString()
+                    val icon = pm.getApplicationIcon(appInfo)
+                    InstalledApp(appInfo.packageName, label, icon)
+                } catch (e: Exception) {
+                    // Log error for individual app loading failure but continue with others
+                    Log.w("InstalledApps", "Failed to load details for app: ${appInfo.packageName}", e)
+                    null
+                }
+            } else {
+                null // Not a launchable app
             }
-        }.distinctBy { it.packageName }
-            .sortedBy { it.label.lowercase() }
+        }
+
+        // Distinct by package name (though getInstalledApplications should already be distinct)
+        // and sort by label
         return apps
+            .distinctBy { it.packageName }
+            .sortedBy { it.label.lowercase() }
     }
 }
