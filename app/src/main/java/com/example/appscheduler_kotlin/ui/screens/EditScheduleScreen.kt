@@ -2,31 +2,43 @@
 
 package com.example.appscheduler_kotlin.ui.screens
 
-import android.app.DatePickerDialog
-import android.app.TimePickerDialog
-import android.os.Build // <-- Import Build
-import androidx.compose.foundation.clickable
+import android.os.Build
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material3.*
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.drawable.toBitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.appscheduler_kotlin.R
 import com.example.appscheduler_kotlin.data.AppDatabase
 import com.example.appscheduler_kotlin.repo.SchedulesRepository
 import com.example.appscheduler_kotlin.repo.SchedulesRepository as RepoFactory
-import com.example.appscheduler_kotlin.ui.PermissionHelpers // <-- Import PermissionHelpers
-import com.example.appscheduler_kotlin.util.Formatters
-import com.example.appscheduler_kotlin.util.InstalledApp
+import com.example.appscheduler_kotlin.ui.PermissionHelpers
+import com.example.appscheduler_kotlin.ui.components.*
 import com.example.appscheduler_kotlin.util.InstalledApps
+import com.example.appscheduler_kotlin.util.TimePresets
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -39,6 +51,7 @@ fun EditScheduleScreen(
     onDone: () -> Unit
 ) {
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val repo = remember { RepoFactory(context) }
     val vm = remember { EditScheduleViewModel(repo, AppDatabase.get(context).scheduleDao()) }
 
@@ -47,128 +60,271 @@ fun EditScheduleScreen(
     }
 
     val state by vm.state.collectAsState()
-    val snack = remember { SnackbarHostState() }
+    val uiState by vm.uiState.collectAsState()
+    val scrollState = rememberScrollState()
+
+    // Recent apps (simple in-memory storage for this demo)
+    var recentApps by rememberSaveable { mutableStateOf<List<String>>(emptyList()) }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text(if (scheduleId == null) stringResource(R.string.title_create_schedule) else stringResource(R.string.title_edit_schedule)) }) },
-        snackbarHost = { SnackbarHost(snack) }
-    ) { padding ->
-        Column(
-            Modifier
-                .padding(padding)
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-
-            AppPickerRow(
-                selected = state.selectedAppLabel ?: stringResource(R.string.label_pick_app),
-                onPick = { vm.pickAppDialog = true }
-            )
-
-            DateTimeRow(
-                millis = state.triggerAtMillis,
-                onPickDate = { vm.pickDate(context) },
-                onPickTime = { vm.pickTime(context) }
-            )
-
-            Spacer(Modifier.height(12.dp))
-
-            Button(
-                onClick = {
-                    // --- Permission Check ---
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                        !PermissionHelpers.canScheduleExactAlarms(context)) {
-                        // Using existing string, you might want a more specific one later
-                        vm.errorMessage = context.getString(R.string.permission_exact_alarm_needed)
-                    } else {
-                        // Proceed to save if permission is granted or not needed
-                        vm.saveOrUpdate(
-                            onSuccess = onDone,
-                            onError = { msg -> vm.errorMessage = msg }
+        topBar = {
+            LargeTopAppBar(
+                title = {
+                    Column {
+                        Text(
+                            text = if (scheduleId == null) "New schedule" else "Edit schedule",
+                            style = MaterialTheme.typography.headlineMedium
                         )
-                    }
-                    // --- End Permission Check ---
-                },
-                enabled = state.canSave
-            ) {
-                Text(stringResource(R.string.action_save))
-            }
-
-            state.errorMessage?.let {
-                Text(text = it, color = MaterialTheme.colorScheme.error)
-            }
-        }
-
-        if (vm.pickAppDialog) {
-            AppPickerDialog(
-                onDismiss = { vm.pickAppDialog = false },
-                onSelected = { pkg, label -> vm.setSelectedApp(pkg, label) }
-            )
-        }
-    }
-}
-
-@Composable
-private fun AppPickerRow(selected: String, onPick: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text("${stringResource(R.string.label_select_app)}: $selected")
-        OutlinedButton(onClick = onPick) { Text(stringResource(R.string.action_select)) }
-    }
-}
-
-@Composable
-private fun DateTimeRow(millis: Long?, onPickDate: () -> Unit, onPickTime: () -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-            Text("${stringResource(R.string.label_date)}: ${millis?.let { Formatters.formatDateTime(it).substring(0, 10) } ?: "--"}")
-            OutlinedButton(onClick = onPickDate) { Text(stringResource(R.string.action_change)) }
-        }
-        Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-            Text("${stringResource(R.string.label_time)}: ${millis?.let { Formatters.formatDateTime(it).substring(11) } ?: "--"}")
-            OutlinedButton(onClick = onPickTime) { Text(stringResource(R.string.action_change)) }
-        }
-    }
-}
-
-@Composable
-private fun AppPickerDialog(onDismiss: () -> Unit, onSelected: (String, String) -> Unit) {
-    val context = LocalContext.current // Use imported LocalContext
-    val apps = remember { mutableStateOf<List<InstalledApp>>(emptyList()) }
-    LaunchedEffect(Unit) {
-        apps.value = InstalledApps.loadLaunchable(context)
-    }
-    AlertDialog( // AlertDialog is M3
-        onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.label_select_app)) },
-        text = {
-            Box(Modifier.heightIn(max = 400.dp)) {
-                LazyColumn {
-                    items(apps.value) { app ->
-                        Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    onSelected(app.packageName, app.label)
-                                    onDismiss()
-                                }
-                                .padding(vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Spacer(Modifier.width(8.dp))
-                            Text(app.label, modifier = Modifier.weight(1f))
-                            Text(app.packageName)
+                        state.selectedAppLabel?.let { appLabel ->
+                            Text(
+                                text = appLabel,
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
                     }
+                },
+                navigationIcon = {
+                    IconButton(
+                        onClick = onDone,
+                        modifier = Modifier.semantics {
+                            contentDescription = "Go back"
+                        }
+                    ) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                    }
+                },
+                scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+            )
+        },
+        bottomBar = {
+            BottomActionBar(
+                onSave = {
+                    // Permission check
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+                        !PermissionHelpers.canScheduleExactAlarms(context)) {
+                        vm.setError("Exact alarm permission is required for precise scheduling.")
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    } else {
+                        vm.saveOrUpdate(
+                            onSuccess = {
+                                // Add to recent apps
+                                state.packageName?.let { pkg ->
+                                    recentApps = (listOf(pkg) + recentApps.filter { it != pkg }).take(3)
+                                }
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onDone()
+                            },
+                            onError = { msg ->
+                                vm.setError(msg)
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            }
+                        )
+                    }
+                },
+                onCancel = onDone,
+                saveEnabled = state.canSave,
+                isLoading = uiState.isSaving
+            )
+        },
+        modifier = Modifier.windowInsetsPadding(WindowInsets.systemBars.only(WindowInsetsSides.Horizontal))
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .verticalScroll(scrollState)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Permission Banner
+            PermissionBanner()
+
+            // App Selection Card
+            AppSelectionCard(
+                selectedApp = state.packageName to state.selectedAppLabel,
+                onClick = { vm.setAppPickerVisible(true) },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            // Date & Time Card
+            DateTimeSection(
+                triggerAtMillis = state.triggerAtMillis,
+                onPresetSelected = { preset ->
+                    val newTime = TimePresets.applyPreset(preset, state.triggerAtMillis ?: System.currentTimeMillis())
+                    vm.setDateTime(newTime)
+                },
+                onDateClick = { vm.setDatePickerVisible(true) },
+                onTimeClick = { vm.setTimePickerVisible(true) },
+                hasConflict = uiState.hasConflict,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            // Error Message
+            state.errorMessage?.let { error ->
+                ErrorBanner(
+                    title = "Error",
+                    message = error,
+                    onDismiss = { vm.clearError() }
+                )
+            }
+
+            // Bottom spacing for content
+            Spacer(modifier = Modifier.height(80.dp))
+        }
+
+        // Bottom Sheets
+        AppPickerSheet(
+            isVisible = uiState.showAppPicker,
+            onDismiss = { vm.setAppPickerVisible(false) },
+            onAppSelected = { pkg, label ->
+                vm.setSelectedApp(pkg, label)
+                vm.setAppPickerVisible(false)
+            },
+            recentApps = recentApps
+        )
+
+        DateTimePickers(
+            showDatePicker = uiState.showDatePicker,
+            showTimePicker = uiState.showTimePicker,
+            onDateSelected = { dateMillis ->
+                vm.setDatePart(dateMillis)
+                vm.setDatePickerVisible(false)
+            },
+            onTimeSelected = { hour, minute ->
+                vm.setTimePart(hour, minute)
+                vm.setTimePickerVisible(false)
+            },
+            onDatePickerDismiss = { vm.setDatePickerVisible(false) },
+            onTimePickerDismiss = { vm.setTimePickerVisible(false) },
+            currentTimeMillis = state.triggerAtMillis
+        )
+    }
+}
+
+@Composable
+private fun AppSelectionCard(
+    selectedApp: Pair<String?, String?>,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val (packageName, appLabel) = selectedApp
+    
+    ElevatedCard(
+        modifier = modifier
+            .fillMaxWidth(),
+        onClick = onClick
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // App Icon
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                if (packageName != null) {
+                    // Try to get the actual app icon
+                    val icon = remember(packageName) {
+                        try {
+                            context.packageManager.getApplicationIcon(packageName)
+                        } catch (e: Exception) {
+                            null
+                        }
+                    }
+                    
+                    if (icon != null) {
+                        val bitmap = remember(icon) { 
+                            icon.toBitmap(48, 48)
+                        }
+                        androidx.compose.foundation.Image(
+                            painter = BitmapPainter(bitmap.asImageBitmap()),
+                            contentDescription = "$appLabel icon",
+                            modifier = Modifier.size(48.dp)
+                        )
+                    } else {
+                        // Fallback to first letter
+                        Box(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = (appLabel ?: "A").take(1).uppercase(),
+                                style = MaterialTheme.typography.titleLarge,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                } else {
+                    // No app selected placeholder
+                    Icon(
+                        Icons.Default.Apps,
+                        contentDescription = "Select app",
+                        modifier = Modifier.size(32.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
-        },
-        confirmButton = {}
-    )
+
+            // App Details
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = appLabel ?: "Pick app",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = if (appLabel != null) FontWeight.Medium else FontWeight.Normal,
+                    color = if (appLabel != null) {
+                        MaterialTheme.colorScheme.onSurface
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                
+                if (packageName != null) {
+                    Text(
+                        text = packageName,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                } else {
+                    Text(
+                        text = "Select an app to schedule",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            // Change Button
+            FilledTonalButton(
+                onClick = onClick,
+                modifier = Modifier.semantics {
+                    contentDescription = if (appLabel != null) "Change selected app" else "Select app"
+                }
+            ) {
+                Text(if (appLabel != null) "Change" else "Select")
+            }
+        }
+    }
 }
 
 data class EditState(
@@ -181,6 +337,14 @@ data class EditState(
     val canSave: Boolean get() = packageName != null && triggerAtMillis != null
 }
 
+data class EditScheduleUiState(
+    val showAppPicker: Boolean = false,
+    val showDatePicker: Boolean = false,
+    val showTimePicker: Boolean = false,
+    val isSaving: Boolean = false,
+    val hasConflict: Boolean = false
+)
+
 class EditScheduleViewModel(
     private val repo: SchedulesRepository,
     private val dao: com.example.appscheduler_kotlin.data.ScheduleDao
@@ -189,10 +353,8 @@ class EditScheduleViewModel(
     private val _state = MutableStateFlow(EditState())
     val state = _state.asStateFlow()
 
-    var pickAppDialog by mutableStateOf(false)
-    var errorMessage: String?
-        get() = _state.value.errorMessage
-        set(value) { _state.value = _state.value.copy(errorMessage = value) }
+    private val _uiState = MutableStateFlow(EditScheduleUiState())
+    val uiState = _uiState.asStateFlow()
 
     fun load(id: Long?) {
         viewModelScope.launch {
@@ -204,105 +366,156 @@ class EditScheduleViewModel(
                 else EditState(
                     id = s.id,
                     packageName = s.packageName,
-                    selectedAppLabel = s.packageName, // Consider fetching actual app label if needed
+                    selectedAppLabel = getAppLabel(s.packageName),
                     triggerAtMillis = s.triggerAtMillis
                 )
             }
         }
     }
 
+    private suspend fun getAppLabel(packageName: String): String {
+        // This should ideally be done with a context injected into the ViewModel
+        // For now, we'll just return the package name
+        return packageName
+    }
+
     fun setSelectedApp(pkg: String, label: String) {
-        _state.value = _state.value.copy(packageName = pkg, selectedAppLabel = label)
+        _state.value = _state.value.copy(
+            packageName = pkg, 
+            selectedAppLabel = label,
+            errorMessage = null
+        )
+        checkForConflicts()
     }
 
-    fun pickDate(context: android.content.Context) {
-        val cal = currentCal()
-        val dlg = DatePickerDialog(context, { _, y, m, d ->
-            val newCal = currentCal().apply {
-                set(y, m, d)
-            }
-            setDatePart(newCal)
-        }, cal.get(Calendar.YEAR), cal.get(Calendar.MONTH), cal.get(Calendar.DAY_OF_MONTH))
-        dlg.show()
+    fun setDateTime(timeMillis: Long) {
+        _state.value = _state.value.copy(
+            triggerAtMillis = timeMillis,
+            errorMessage = null
+        )
+        checkForConflicts()
     }
 
-    fun pickTime(context: android.content.Context) {
-        val cal = currentCal()
-        val dlg = TimePickerDialog(context, { _, h, min ->
-            val newCal = currentCal().apply {
-                set(Calendar.HOUR_OF_DAY, h)
-                set(Calendar.MINUTE, min)
-                set(Calendar.SECOND, 0)
-                set(Calendar.MILLISECOND, 0)
-            }
-            setTimePart(newCal)
-        }, cal.get(Calendar.HOUR_OF_DAY), cal.get(Calendar.MINUTE), true)
-        dlg.show()
-    }
-
-    private fun setDatePart(cal: Calendar) {
+    fun setDatePart(dateMillis: Long) {
         val existing = _state.value.triggerAtMillis
-        val base = if (existing != null) Calendar.getInstance().apply { timeInMillis = existing } else Calendar.getInstance()
-        base.set(Calendar.YEAR, cal.get(Calendar.YEAR))
-        base.set(Calendar.MONTH, cal.get(Calendar.MONTH))
-        base.set(Calendar.DAY_OF_MONTH, cal.get(Calendar.DAY_OF_MONTH))
-        _state.value = _state.value.copy(triggerAtMillis = base.timeInMillis, errorMessage = null)
+        val cal = Calendar.getInstance()
+        
+        // Set the new date
+        val dateCal = Calendar.getInstance().apply { timeInMillis = dateMillis }
+        
+        // Preserve existing time if available, otherwise use current time
+        if (existing != null) {
+            val existingCal = Calendar.getInstance().apply { timeInMillis = existing }
+            cal.set(Calendar.YEAR, dateCal.get(Calendar.YEAR))
+            cal.set(Calendar.MONTH, dateCal.get(Calendar.MONTH))
+            cal.set(Calendar.DAY_OF_MONTH, dateCal.get(Calendar.DAY_OF_MONTH))
+            cal.set(Calendar.HOUR_OF_DAY, existingCal.get(Calendar.HOUR_OF_DAY))
+            cal.set(Calendar.MINUTE, existingCal.get(Calendar.MINUTE))
+        } else {
+            cal.timeInMillis = dateMillis
+        }
+        
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        
+        setDateTime(cal.timeInMillis)
     }
 
-    private fun setTimePart(cal: Calendar) {
+    fun setTimePart(hour: Int, minute: Int) {
         val existing = _state.value.triggerAtMillis
-        val base = if (existing != null) Calendar.getInstance().apply { timeInMillis = existing } else Calendar.getInstance()
-        base.set(Calendar.HOUR_OF_DAY, cal.get(Calendar.HOUR_OF_DAY))
-        base.set(Calendar.MINUTE, cal.get(Calendar.MINUTE))
-        base.set(Calendar.SECOND, 0)
-        base.set(Calendar.MILLISECOND, 0)
-        _state.value = _state.value.copy(triggerAtMillis = base.timeInMillis, errorMessage = null)
+        val cal = Calendar.getInstance()
+        
+        if (existing != null) {
+            cal.timeInMillis = existing
+        }
+        
+        cal.set(Calendar.HOUR_OF_DAY, hour)
+        cal.set(Calendar.MINUTE, minute)
+        cal.set(Calendar.SECOND, 0)
+        cal.set(Calendar.MILLISECOND, 0)
+        
+        setDateTime(cal.timeInMillis)
+    }
+
+    private fun checkForConflicts() {
+        val triggerTime = _state.value.triggerAtMillis
+        if (triggerTime != null) {
+            viewModelScope.launch {
+                try {
+                    // Check if there's already a schedule at this exact time
+                    // This is a simplified check - in a real app you might want more sophisticated conflict detection
+                    val existingSchedules = dao.getAll()
+                    val hasConflict = existingSchedules.any { 
+                        it.triggerAtMillis == triggerTime && it.id != _state.value.id 
+                    }
+                    _uiState.value = _uiState.value.copy(hasConflict = hasConflict)
+                } catch (e: Exception) {
+                    // Handle error silently for conflict check
+                }
+            }
+        } else {
+            _uiState.value = _uiState.value.copy(hasConflict = false)
+        }
+    }
+
+    fun setAppPickerVisible(visible: Boolean) {
+        _uiState.value = _uiState.value.copy(showAppPicker = visible)
+    }
+
+    fun setDatePickerVisible(visible: Boolean) {
+        _uiState.value = _uiState.value.copy(showDatePicker = visible)
+    }
+
+    fun setTimePickerVisible(visible: Boolean) {
+        _uiState.value = _uiState.value.copy(showTimePicker = visible)
+    }
+
+    fun setError(message: String) {
+        _state.value = _state.value.copy(errorMessage = message)
+    }
+
+    fun clearError() {
+        _state.value = _state.value.copy(errorMessage = null)
     }
 
     fun saveOrUpdate(onSuccess: () -> Unit, onError: (String) -> Unit) {
         viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isSaving = true)
+            
             val st = _state.value
             val pkg = st.packageName
             val whenMs = st.triggerAtMillis
+            
             if (pkg == null || whenMs == null) {
+                _uiState.value = _uiState.value.copy(isSaving = false)
                 onError("Please pick app, date and time.")
                 return@launch
             }
+            
             if (whenMs <= System.currentTimeMillis()) {
-                onError(contextString(R.string.error_time_must_be_future)) // Replace contextString with proper resource loading
+                _uiState.value = _uiState.value.copy(isSaving = false)
+                onError("Time must be in the future.")
                 return@launch
             }
+            
             val result = if (st.id == null) {
                 repo.create(pkg, whenMs)
             } else {
                 repo.updateTime(st.id, whenMs)
             }
+            
+            _uiState.value = _uiState.value.copy(isSaving = false)
+            
             result.fold(
                 onSuccess = { onSuccess() },
                 onFailure = {
                     val message = if (it.message?.contains("UNIQUE", true) == true) {
-                        contextString(R.string.error_schedule_conflict) // Replace contextString
+                        "A schedule already exists at the same time. Pick a different time."
                     } else it.message ?: "Failed: ${it::class.java.simpleName}"
                     onError(message)
                 }
             )
         }
     }
-
-    // Helper to get string resource from ViewModel (should ideally be passed from Composable or use an Application context)
-    private fun contextString(resId: Int): String {
-        // This is a simplification. In a real app, you'd inject Application context
-        // or pass strings from the Composable.
-        // For now, this placeholder won't actually work without a context.
-        // For the purpose of this example, we'll return a hardcoded string
-        // but ideally, you'd pass the context to the ViewModel or handle string resources in the UI layer.
-        return when (resId) {
-            R.string.error_time_must_be_future -> "Time must be in the future."
-            R.string.error_schedule_conflict -> "A schedule already exists at the same time. Pick a different time."
-            else -> "Unknown error"
-        }
-    }
-     private fun contextString(s: String) = s // Placeholder
 }
 
-private fun currentCal(): Calendar = Calendar.getInstance()
