@@ -5,6 +5,7 @@ package com.example.appscheduler_kotlin.ui.screens
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.os.Build
+import androidx.compose.foundation.Image // Added import
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -15,12 +16,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap // Added import
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity // Added import
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.graphics.drawable.toBitmap // Added import
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.appscheduler_kotlin.R
@@ -242,6 +246,13 @@ private fun AppPickerDialog(onDismiss: () -> Unit, onSelected: (String, String) 
     LaunchedEffect(Unit) {
         apps.value = InstalledApps.loadLaunchable(context)
     }
+
+    val iconSize = 36.dp
+    val density = LocalDensity.current
+    val iconSizePx = remember(iconSize, density) {
+        with(density) { iconSize.roundToPx() }
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.label_select_app)) },
@@ -249,6 +260,15 @@ private fun AppPickerDialog(onDismiss: () -> Unit, onSelected: (String, String) 
             Box(Modifier.heightIn(max = 400.dp)) {
                 LazyColumn {
                     items(apps.value) { app ->
+                        val imageBitmap = remember(app.icon, iconSizePx) {
+                            app.icon?.let {
+                                try {
+                                    it.toBitmap(width = iconSizePx, height = iconSizePx).asImageBitmap()
+                                } catch (e: Exception) {
+                                    null // Could log error here
+                                }
+                            }
+                        }
                         Row(
                             Modifier
                                 .fillMaxWidth()
@@ -256,12 +276,20 @@ private fun AppPickerDialog(onDismiss: () -> Unit, onSelected: (String, String) 
                                     onSelected(app.packageName, app.label)
                                     onDismiss()
                                 }
-                                .padding(vertical = 8.dp),
+                                .padding(horizontal = 8.dp, vertical = 10.dp), // Adjusted padding
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Spacer(Modifier.width(8.dp))
-                            Text(app.label, modifier = Modifier.weight(1f))
-                            Text(app.packageName)
+                            if (imageBitmap != null) {
+                                Image(
+                                    bitmap = imageBitmap,
+                                    contentDescription = "${app.label} icon",
+                                    modifier = Modifier.size(iconSize)
+                                )
+                            } else {
+                                Spacer(Modifier.size(iconSize)) // Placeholder if icon is null or load fails
+                            }
+                            Spacer(Modifier.width(16.dp))
+                            Text(app.label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
                         }
                     }
                 }
@@ -401,16 +429,4 @@ class EditScheduleViewModel(
      private fun contextString(s: String) = s // Placeholder for direct string errors
 }
 
-private fun currentCal(): Calendar = Calendar.getInstance() 
-
-// Assuming Formatters.kt has these functions or similar:
-// object Formatters {
-//     fun formatDate(millis: Long): String {
-//         val sdf = java.text.SimpleDateFormat("MM/dd/yyyy", java.util.Locale.getDefault())
-//         return sdf.format(java.util.Date(millis))
-//     }
-//     fun formatTime(millis: Long): String {
-//         val sdf = java.text.SimpleDateFormat("hh:mm a", java.util.Locale.getDefault())
-//         return sdf.format(java.util.Date(millis))
-//     }
-// }
+private fun currentCal(): Calendar = Calendar.getInstance()
