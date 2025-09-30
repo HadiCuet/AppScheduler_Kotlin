@@ -32,4 +32,6 @@
     <string name="title_edit_schedule">Edit Schedule</string>
     <string name="error_time_must_be_future">Time must be in the future.</string>
     <string name="error_schedule_conflict">A schedule already exists at this time. Please pick a different time.</string>
+    <string name="label_app_selection_title">Application</string>
+    <string name="desc_tappable_select_app">Select an application</string>
 </resources>

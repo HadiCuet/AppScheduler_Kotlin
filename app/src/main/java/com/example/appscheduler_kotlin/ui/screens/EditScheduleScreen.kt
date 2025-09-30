@@ -9,14 +9,17 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons // Added import
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight // Added import
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback // Added import
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType // Added import
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow // Added import
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -40,7 +43,7 @@ fun EditScheduleScreen(
     onDone: () -> Unit
 ) {
     val context = LocalContext.current
-    val repo = remember { SchedulesRepository(context) } // Corrected instantiation if it's a direct class
+    val repo = remember { SchedulesRepository(context) }
     val vm = remember { EditScheduleViewModel(repo, AppDatabase.get(context).scheduleDao()) }
 
     LaunchedEffect(scheduleId) {
@@ -48,12 +51,11 @@ fun EditScheduleScreen(
     }
 
     val state by vm.state.collectAsState()
-    val snack = remember { SnackbarHostState() }
-    val hapticFeedback = LocalHapticFeedback.current // Added for haptics
+    val hapticFeedback = LocalHapticFeedback.current
 
     Scaffold(
         topBar = { TopAppBar(title = { Text(if (scheduleId == null) stringResource(R.string.title_create_schedule) else stringResource(R.string.title_edit_schedule)) }) },
-        snackbarHost = { SnackbarHost(snack) },
+        snackbarHost = { SnackbarHost(remember { SnackbarHostState() }) },
         bottomBar = {
             BottomAppBar {
                 Row(
@@ -64,14 +66,14 @@ fun EditScheduleScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     OutlinedButton(
-                        onClick = onDone, // Cancel action
+                        onClick = onDone, 
                         modifier = Modifier.weight(1f)
                     ) {
                         Text(stringResource(R.string.action_cancel))
                     }
                     Button(
                         onClick = {
-                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress) // Corrected haptic type
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.LongPress)
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
                                 !PermissionHelpers.canScheduleExactAlarms(context)) {
                                 vm.errorMessage = context.getString(R.string.permission_exact_alarm_needed)
@@ -93,10 +95,10 @@ fun EditScheduleScreen(
     ) { padding ->
         Column(
             Modifier
-                .padding(padding) // Scaffold's padding for system bars and bottomBar
+                .padding(padding)
                 .fillMaxSize()
-                .padding(16.dp), // Screen content padding
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp) // Increased spacing a bit for the new card
         ) {
             AppPickerRow(
                 selected = state.selectedAppLabel ?: stringResource(R.string.label_pick_app),
@@ -125,13 +127,37 @@ fun EditScheduleScreen(
 
 @Composable
 private fun AppPickerRow(selected: String, onPick: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text("${stringResource(R.string.label_select_app)}: $selected")
-        OutlinedButton(onClick = onPick) { Text(stringResource(R.string.action_select)) }
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = stringResource(R.string.label_app_selection_title),
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        OutlinedCard(
+            onClick = onPick,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp), // Adjusted padding for card content
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(
+                    text = selected,
+                    modifier = Modifier.weight(1f),
+                    style = MaterialTheme.typography.bodyLarge,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = stringResource(R.string.desc_tappable_select_app),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
     }
 }
 
