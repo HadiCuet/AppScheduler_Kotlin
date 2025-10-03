@@ -34,12 +34,16 @@
     <string name="desc_tappable_select_date">Select the date</string>
     <string name="desc_tappable_select_time">Select the time</string>
 
-
-    <!-- Added strings -->
     <string name="title_create_schedule">Create Schedule</string>
     <string name="title_edit_schedule">Edit Schedule</string>
     <string name="error_time_must_be_future">Time must be in the future.</string>
     <string name="error_schedule_conflict">A schedule already exists at this time. Please pick a different time.</string>
     <string name="label_app_selection_title">Application</string>
     <string name="desc_tappable_select_app">Select an application</string>
+    <string name="title_permission_required">Permission Required</string>
+    <string name="permission_exact_alarm_needed_explanation">To ensure schedules run precisely on
+        time, this app needs permission to schedule exact alarms. Please grant this permission in
+        the system settings.
+    </string>
+    <string name="action_open_settings">Open Settings</string>
 </resources>
