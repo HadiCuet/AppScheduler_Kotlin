@@ -9,22 +9,13 @@
     <string name="action_edit">Edit</string>
     <string name="action_cancel">Cancel</string>
     <string name="action_save">Save</string>
-    <string name="action_change">Change</string>
     <string name="action_select">Select</string>
-    <string name="action_retry">Retry</string>
     <string name="permission_notifications_needed">Enable notifications to receive alerts.</string>
     <string name="permission_exact_alarm_needed">Allow exact alarms for precise scheduling.</string>
     <string name="label_select_app">Select app</string>
-    <string name="label_date">Date</string>
-    <string name="label_time">Time</string>
     <string name="label_no_schedules">No schedules yet</string>
     <string name="label_schedules">Schedules</string>
-    <string name="label_log">Logs</string>
-    <string name="label_status">Status</string>
-    <string name="label_package">Package</string>
     <string name="label_when">When</string>
-    <string name="label_conflict">A schedule already exists at the same time. Pick a different time.</string>
-    <string name="label_past_time">Time must be in the future.</string>
     <string name="label_pick_app">Pick an app to schedule</string>
 
     <string name="label_date_selection_title">Date</string>
