@@ -262,7 +262,17 @@ private fun DateTimeRow(millis: Long?, onPickDate: () -> Unit, onPickTime: () ->
 private fun AppPickerDialog(onDismiss: () -> Unit, onSelected: (String, String) -> Unit) {
     val context = LocalContext.current
     val apps = remember { mutableStateOf<List<InstalledApp>>(emptyList()) }
+    var searchText by rememberSaveable { mutableStateOf("") }
+
     LaunchedEffect(Unit) { apps.value = InstalledApps.loadLaunchable(context) }
+
+    val filteredApps = remember(searchText, apps.value) {
+        if (searchText.isBlank()) {
+            apps.value
+        } else {
+            apps.value.filter { it.label.contains(searchText, ignoreCase = true) }
+        }
+    }
 
     val iconSize = 36.dp
     val density = LocalDensity.current
@@ -272,26 +282,34 @@ private fun AppPickerDialog(onDismiss: () -> Unit, onSelected: (String, String) 
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.label_select_app)) },
         text = {
-            Box(Modifier.heightIn(max = 400.dp)) {
-                LazyColumn {
-                    items(apps.value) { app ->
-                        val imageBitmap = remember(app.icon, iconSizePx) {
-                            app.icon?.let { try { it.toBitmap(width = iconSizePx, height = iconSizePx).asImageBitmap() } catch (e: Exception) { null } }
-                        }
-                        Row(
-                            Modifier
-                                .fillMaxWidth()
-                                .clickable { onSelected(app.packageName, app.label); onDismiss() }
-                                .padding(horizontal = 8.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            if (imageBitmap != null) {
-                                Image(bitmap = imageBitmap, contentDescription = "${app.label} icon", modifier = Modifier.size(iconSize))
-                            } else {
-                                Spacer(Modifier.size(iconSize))
+            Column {
+                OutlinedTextField(
+                    value = searchText,
+                    onValueChange = { searchText = it },
+                    label = { Text(stringResource(R.string.label_search_apps)) },
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                )
+                Box(Modifier.heightIn(max = 400.dp)) {
+                    LazyColumn {
+                        items(filteredApps) { app ->
+                            val imageBitmap = remember(app.icon, iconSizePx) {
+                                app.icon?.let { try { it.toBitmap(width = iconSizePx, height = iconSizePx).asImageBitmap() } catch (e: Exception) { null } }
                             }
-                            Spacer(Modifier.width(16.dp))
-                            Text(app.label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                            Row(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onSelected(app.packageName, app.label); onDismiss() }
+                                    .padding(horizontal = 8.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                if (imageBitmap != null) {
+                                    Image(bitmap = imageBitmap, contentDescription = "${app.label} icon", modifier = Modifier.size(iconSize))
+                                } else {
+                                    Spacer(Modifier.size(iconSize))
+                                }
+                                Spacer(Modifier.width(16.dp))
+                                Text(app.label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
+                            }
                         }
                     }
                 }

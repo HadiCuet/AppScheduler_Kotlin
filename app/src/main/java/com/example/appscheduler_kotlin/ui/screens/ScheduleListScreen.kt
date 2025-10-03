@@ -13,15 +13,19 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.appscheduler_kotlin.R
@@ -35,7 +39,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import java.util.Locale // Added for title case formatting
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,6 +49,21 @@ fun ScheduleListScreen(
 ) {
     val context = LocalContext.current
     val vm = remember { ScheduleListViewModel(RepoFactory(context)) }
+
+    var hasExactAlarmPermission by rememberSaveable {
+        mutableStateOf(PermissionHelpers.canScheduleExactAlarms(context))
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                hasExactAlarmPermission = PermissionHelpers.canScheduleExactAlarms(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     val schedules by vm.schedules.collectAsState()
     val snack = remember { SnackbarHostState() }
@@ -64,7 +83,9 @@ fun ScheduleListScreen(
         }
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
-            PermissionWarnings()
+            if (!hasExactAlarmPermission) {
+                PermissionWarnings()
+            }
 
             if (schedules.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -88,8 +109,8 @@ fun ScheduleListScreen(
 @Composable
 private fun PermissionWarnings() {
     val context = LocalContext.current
-    Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !PermissionHelpers.canScheduleExactAlarms(context)) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             AssistChip(
                 onClick = { PermissionHelpers.openExactAlarmSettings(context) },
                 label = { Text(stringResource(R.string.permission_exact_alarm_needed)) }
@@ -115,7 +136,7 @@ private fun ScheduleRow(
             val drawable = pm.getApplicationIcon(schedule.packageName)
             drawable.toBitmap(width = iconSizePx, height = iconSizePx).asImageBitmap()
         } catch (e: PackageManager.NameNotFoundException) {
-            null // Handle app not found or icon loading error
+            null
         }
     }
 
@@ -129,11 +150,11 @@ private fun ScheduleRow(
                         modifier = Modifier.size(iconSize)
                     )
                 } else {
-                    Spacer(Modifier.size(iconSize)) // Placeholder if icon is null
+                    Spacer(Modifier.size(iconSize))
                 }
                 Spacer(Modifier.width(12.dp))
                 Text(
-                    text = schedule.appLabel, // Use appLabel here
+                    text = schedule.appLabel,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.weight(1f)
