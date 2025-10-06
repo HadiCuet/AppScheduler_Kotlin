@@ -1,5 +1,5 @@
 
-@file:OptIn(ExperimentalMaterial3Api::class) // File-level OptIn
+@file:OptIn(ExperimentalMaterial3Api::class)
 
 package com.example.appscheduler_kotlin.ui.screens
 

@@ -32,8 +32,6 @@ fun AppNavigation() {
 object AppDestinations {
     const val SCHEDULE_LIST_ROUTE = "schedule_list"
     const val SCHEDULE_ID_KEY = "scheduleId"
-    // Adding "/{scheduleId}" makes scheduleId a mandatory argument for the base route.
-    // For an optional/nullable argument, we can define the base route without it and handle nullability.
     const val EDIT_SCHEDULE_ROUTE_BASE = "edit_schedule"
     const val EDIT_SCHEDULE_ROUTE = "$EDIT_SCHEDULE_ROUTE_BASE/{$SCHEDULE_ID_KEY}"
 }

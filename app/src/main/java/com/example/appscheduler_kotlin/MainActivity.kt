@@ -23,7 +23,6 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContent {
             AppScheduler_KotlinTheme {
-                // --- Notification Permission Request (Android 13+) ---
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     val context = LocalContext.current
                     val notificationPermissionLauncher = rememberLauncherForActivityResult(
@@ -39,7 +38,7 @@ class MainActivity : ComponentActivity() {
                         }
                     )
 
-                    LaunchedEffect(key1 = Unit) { // Runs once when the Composable enters the composition
+                    LaunchedEffect(key1 = Unit) {
                         if (ContextCompat.checkSelfPermission(
                                 context,
                                 Manifest.permission.POST_NOTIFICATIONS
@@ -49,7 +48,6 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
-                // --- End Notification Permission Request ---
 
                 Surface(
                     modifier = Modifier.fillMaxSize(),

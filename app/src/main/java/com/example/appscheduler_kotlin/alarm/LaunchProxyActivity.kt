@@ -11,10 +11,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
-/**
- * A transparent activity started from the notification tap.
- * It marks the schedule as "intent sent", launches the target app, and finishes.
- */
 class LaunchProxyActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {

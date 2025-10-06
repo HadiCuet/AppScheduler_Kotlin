@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlin.random.Random
 
 class SchedulesRepository(
-    private val context: Context, // Added context
+    private val context: Context,
     private val dao: ScheduleDao,
     private val scheduler: AppScheduler
 ) {
@@ -28,7 +28,7 @@ class SchedulesRepository(
 
         val requestCode = Random.nextInt(100000, 999999)
         val s = Schedule(
-            appLabel = appLabel, // Added appLabel
+            appLabel = appLabel,
             packageName = packageName,
             triggerAtMillis = triggerAt,
             requestCode = requestCode,
@@ -49,14 +49,14 @@ class SchedulesRepository(
         val existing = dao.get(id) ?: return Result.failure(IllegalArgumentException("Not found"))
         // Cancel previous alarm
         scheduler.cancel(existing) // Pass the Schedule object
-        val updated = existing.copy( // appLabel is preserved from 'existing'
+        val updated = existing.copy(
             triggerAtMillis = newTime,
             status = ScheduleStatus.SCHEDULED,
             updatedAt = System.currentTimeMillis()
         )
         return try {
             dao.update(updated)
-            scheduler.schedule(updated) // Pass the updated Schedule object
+            scheduler.schedule(updated)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -65,8 +65,8 @@ class SchedulesRepository(
 
     suspend fun cancel(id: Long): Result<Unit> {
         val existing = dao.get(id) ?: return Result.success(Unit) // If not found, nothing to cancel
-        scheduler.cancel(existing) // Pass the Schedule object
-        val updated = existing.copy( // appLabel is preserved
+        scheduler.cancel(existing)
+        val updated = existing.copy(
             status = ScheduleStatus.CANCELLED,
             updatedAt = System.currentTimeMillis()
         )

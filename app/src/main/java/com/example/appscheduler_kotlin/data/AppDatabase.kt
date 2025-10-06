@@ -18,7 +18,6 @@ abstract class AppDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
-        // Migration from 1 to 2: Add appLabel column
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE schedules ADD COLUMN appLabel TEXT NOT NULL DEFAULT ''")
@@ -32,7 +31,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "app_scheduler_database"
                 )
-                .addMigrations(MIGRATION_1_2) // Added migration
+                .addMigrations(MIGRATION_1_2)
                 .build()
                 INSTANCE = instance
                 instance
